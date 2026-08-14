@@ -1,0 +1,24 @@
+postgres:
+  container: postgres
+  username: postgres
+
+backup:
+  path: ./backups
+  compression: true
+  verify: true
+  excludeDatabases:
+    - template0
+    - template1
+
+retention:
+  localDays: 30
+  remoteDays: 90
+
+sftp:
+  enabled: false
+  host: backup.example.com
+  port: 22
+  username: backup
+  remotePath: /backups/postgres
+  authentication: key
+  privateKey: ~/.ssh/backup_ed25519
