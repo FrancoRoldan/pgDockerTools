@@ -15,13 +15,6 @@ A cross-platform CLI tool for managing PostgreSQL backups running in Docker cont
   - Manifest generation
   - Automatic compression (.zip on Windows, .tar.gz on Linux)
 
-### Upcoming Features
-
-- 🔄 **Restore** (stub implementation)
-- 🔄 **Verify** (stub implementation)  
-- 🔄 **SFTP Upload/Download** (stub implementation)
-- 🔄 **Retention Policy** (stub implementation)
-- 🔄 **List/Info** (stub implementation)
 
 ## Quick Start
 
