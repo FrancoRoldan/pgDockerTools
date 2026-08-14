@@ -2,11 +2,18 @@ using Microsoft.Extensions.DependencyInjection;
 using PgDocker.Core.Interfaces;
 using PgDocker.Services;
 using Serilog;
+using Serilog.Events;
 
 var services = new ServiceCollection();
 
+var minLevel = LogEventLevel.Information;
+if (args.Contains("-v") || args.Contains("--verbose"))
+    minLevel = LogEventLevel.Debug;
+else if (args.Contains("-q") || args.Contains("--quiet"))
+    minLevel = LogEventLevel.Warning;
+
 Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Information()
+    .MinimumLevel.Is(minLevel)
     .WriteTo.Console(outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
     .CreateLogger();
 
@@ -115,6 +122,8 @@ void ShowHelp()
     Console.WriteLine("  --clean            Drop database before restore");
     Console.WriteLine("  -y, --yes          Skip confirmation prompts");
     Console.WriteLine("  --dry-run          Show what would be deleted without deleting");
+    Console.WriteLine("  -v, --verbose      Show detailed debug logs");
+    Console.WriteLine("  -q, --quiet        Suppress non-critical logs");
 }
 
 async Task HandleBackup(string[] args, IBackupService backupService)

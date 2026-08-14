@@ -158,6 +158,18 @@ dotnet run --project src/PgDocker.Cli -- prune --dry-run
 dotnet run --project src/PgDocker.Cli -- prune
 ```
 
+#### Logging Options
+
+All commands support verbosity control:
+
+```bash
+# Show detailed debug logs
+dotnet run --project src/PgDocker.Cli -- backup --verbose
+
+# Suppress non-critical logs (warnings/errors only)
+dotnet run --project src/PgDocker.Cli -- backup --quiet
+```
+
 ### Configuration
 
 Create a `pgdocker.yml` file:
@@ -264,8 +276,28 @@ pgdocker/
 ### Running Tests
 
 ```bash
+# Run all tests (including integration tests that require Docker)
 dotnet test
+
+# Run only fast unit tests (skip integration tests)
+dotnet test --filter Category!=Integration
 ```
+
+**Integration tests** require Docker to be running. They spin up a real PostgreSQL container, create backups, verify integrity, and test restore operations end-to-end. If Docker is not available, skip them with the `--filter` command above.
+
+### Publishing Release Binaries
+
+To create self-contained single-file executables for Windows and Linux:
+
+```bash
+# Windows x64
+dotnet publish src/PgDocker.Cli -c Release -r win-x64 -o publish/win-x64
+
+# Linux x64
+dotnet publish src/PgDocker.Cli -c Release -r linux-x64 -o publish/linux-x64
+```
+
+The resulting binaries (`publish/win-x64/PgDocker.Cli.exe` and `publish/linux-x64/PgDocker.Cli`) require no .NET runtime to be installed on the target system.
 
 ## Next Steps
 
