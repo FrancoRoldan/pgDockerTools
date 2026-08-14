@@ -2,11 +2,11 @@
 
 A cross-platform CLI tool for managing PostgreSQL backups running in Docker containers.
 
-## Current Status: v0.1 (MVP Development)
+## Current Status: v0.1 (Active Development)
 
 ### Implemented Features
 
-- ✅ **Backup (Complete)**
+- ✅ **Backup**
   - Automatic detection of PostgreSQL container
   - Version detection
   - Global objects backup (`pg_dumpall --globals-only`)
@@ -14,20 +14,44 @@ A cross-platform CLI tool for managing PostgreSQL backups running in Docker cont
   - SHA-256 integrity verification
   - Manifest generation
   - Automatic compression (.zip on Windows, .tar.gz on Linux)
+  - Optional SFTP upload after backup
+  - Optional retention policy application
+
+- ✅ **Restore**
+  - Restore from latest or specific backup
+  - Selective database restore
+  - Optional database cleanup before restore
+  - Confirmation prompts for destructive operations
+
+- ✅ **Verify**
+  - Integrity verification using SHA-256 checksums
+  - Backup format validation
+  - Manifest validation
+
+- ✅ **List**
+  - View all available backups
+  - Display backup metadata (creation date, size, compression status)
+
+- ✅ **Info**
+  - Detailed backup information
+  - Database list within backup
+  - Tool version and PostgreSQL version used
+
+- ✅ **Prune**
+  - Retention policy enforcement
+  - Dry-run mode for safe testing
+  - Automatic cleanup of old backups
 
 ### Upcoming Features
 
-- 🔄 **Restore** (stub implementation)
-- 🔄 **Verify** (stub implementation)  
 - 🔄 **SFTP Upload/Download** (stub implementation)
-- 🔄 **Retention Policy** (stub implementation)
-- 🔄 **List/Info** (stub implementation)
+- 🔄 **Scheduled backups** (via cron/Task Scheduler)
 
 ## Quick Start
 
 ### Prerequisites
 
-- .NET 10 SDK
+- .NET 10.0 SDK
 - Docker
 - PostgreSQL container running
 
@@ -37,7 +61,28 @@ A cross-platform CLI tool for managing PostgreSQL backups running in Docker cont
 dotnet build
 ```
 
-### Usage
+### Run
+
+All commands follow this pattern:
+```bash
+dotnet run --project src/PgDocker.Cli -- [command] [options]
+```
+
+### Available Commands
+
+```
+backup             Create a backup of PostgreSQL databases
+restore            Restore PostgreSQL databases from a backup
+verify             Verify the integrity of a backup
+list               List available backups
+info               Show information about a backup
+upload             Upload a backup to SFTP server (not yet implemented)
+download           Download a backup from SFTP server (not yet implemented)
+prune              Remove old backups according to retention policy
+help               Show help message
+```
+
+### Common Usage Examples
 
 #### Create a Backup
 
@@ -45,16 +90,72 @@ dotnet build
 dotnet run --project src/PgDocker.Cli -- backup
 ```
 
-With custom config file:
-
+With custom config and automatic upload/prune:
 ```bash
-dotnet run --project src/PgDocker.Cli -- backup -c /path/to/config.yml
+dotnet run --project src/PgDocker.Cli -- backup -c config.yml -u -p
 ```
 
-#### Show Help
+Options:
+- `-c, --config` - Path to configuration file (default: pgdocker.yml)
+- `-u, --upload` - Upload backup to SFTP after completion
+- `-p, --prune` - Apply retention policy after backup
+
+#### Restore from Backup
 
 ```bash
-dotnet run --project src/PgDocker.Cli -- help
+# Restore from latest backup
+dotnet run --project src/PgDocker.Cli -- restore
+
+# Restore specific database
+dotnet run --project src/PgDocker.Cli -- restore -d mydb
+
+# Clean (drop) database before restore
+dotnet run --project src/PgDocker.Cli -- restore -d mydb --clean
+
+# Restore from specific backup (skip confirmation)
+dotnet run --project src/PgDocker.Cli -- restore backup_20260814_231110 -y
+```
+
+Options:
+- `-c, --config` - Path to configuration file
+- `-d, --database` - Specific database to restore
+- `--clean` - Drop database before restore
+- `-y, --yes` - Skip confirmation prompts
+
+#### Verify Backup
+
+```bash
+# Verify latest backup
+dotnet run --project src/PgDocker.Cli -- verify
+
+# Verify specific backup
+dotnet run --project src/PgDocker.Cli -- verify backup_20260814_231110
+```
+
+#### List Backups
+
+```bash
+dotnet run --project src/PgDocker.Cli -- list
+```
+
+#### Show Backup Info
+
+```bash
+# Info for latest backup
+dotnet run --project src/PgDocker.Cli -- info
+
+# Info for specific backup
+dotnet run --project src/PgDocker.Cli -- info backup_20260814_231110
+```
+
+#### Apply Retention Policy
+
+```bash
+# Dry-run: show what would be deleted
+dotnet run --project src/PgDocker.Cli -- prune --dry-run
+
+# Actually delete old backups
+dotnet run --project src/PgDocker.Cli -- prune
 ```
 
 ### Configuration
@@ -168,12 +269,12 @@ dotnet test
 
 ## Next Steps
 
-1. Implement `restore` command
-2. Implement `verify` command with integrity checking
-3. Implement SFTP upload/download
-4. Implement retention policy cleanup
-5. Add integration tests with actual PostgreSQL container
-6. Create release binaries for Windows/Linux
+1. Implement SFTP upload/download operations
+2. Add integration tests with actual PostgreSQL container
+3. Add verbose/quiet logging modes
+4. Create release binaries for Windows/Linux
+5. Add support for scheduled backups via cron/Task Scheduler
+6. Performance optimizations for large databases
 
 ## License
 
