@@ -51,7 +51,7 @@ public class DockerService : IDockerService
         var process = new ProcessStartInfo
         {
             FileName = "docker",
-            Arguments = string.Join(" ", allArgs.Select(a => $"\"{a}\"")),
+            Arguments = string.Join(" ", allArgs.Select(QuoteArgument)),
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -91,7 +91,7 @@ public class DockerService : IDockerService
         var process = new ProcessStartInfo
         {
             FileName = "docker",
-            Arguments = string.Join(" ", allArgs.Select(a => $"\"{a}\"")),
+            Arguments = string.Join(" ", allArgs.Select(QuoteArgument)),
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -128,7 +128,7 @@ public class DockerService : IDockerService
         var process = new ProcessStartInfo
         {
             FileName = "docker",
-            Arguments = string.Join(" ", allArgs.Select(a => $"\"{a}\"")),
+            Arguments = string.Join(" ", allArgs.Select(QuoteArgument)),
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
@@ -167,7 +167,7 @@ public class DockerService : IDockerService
         var process = new ProcessStartInfo
         {
             FileName = command,
-            Arguments = string.Join(" ", args.Select(a => $"\"{a}\"")),
+            Arguments = string.Join(" ", args.Select(QuoteArgument)),
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -180,5 +180,14 @@ public class DockerService : IDockerService
             await proc.WaitForExitAsync();
             return output.Trim();
         }
+    }
+
+    private string QuoteArgument(string arg)
+    {
+        if (arg.Contains("\""))
+            return "'" + arg + "'";
+        if (arg.Contains(" "))
+            return "\"" + arg + "\"";
+        return arg;
     }
 }
