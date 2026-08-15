@@ -42,10 +42,15 @@ A cross-platform CLI tool for managing PostgreSQL backups running in Docker cont
   - Dry-run mode for safe testing
   - Automatic cleanup of old backups
 
+- ✅ **SFTP Upload/Download**
+  - SSH key-based authentication
+  - Upload/download backups to/from remote SFTP servers
+  - Automatic metadata sync (manifest, checksums)
+
 ### Upcoming Features
 
-- 🔄 **SFTP Upload/Download** (stub implementation)
 - 🔄 **Scheduled backups** (via cron/Task Scheduler)
+- 🔄 **Password-based SFTP authentication**
 
 ## Quick Start
 
@@ -76,8 +81,8 @@ restore            Restore PostgreSQL databases from a backup
 verify             Verify the integrity of a backup
 list               List available backups
 info               Show information about a backup
-upload             Upload a backup to SFTP server (not yet implemented)
-download           Download a backup from SFTP server (not yet implemented)
+upload             Upload a backup to SFTP server
+download           Download a backup from SFTP server
 prune              Remove old backups according to retention policy
 help               Show help message
 ```
@@ -147,6 +152,33 @@ dotnet run --project src/PgDocker.Cli -- info
 # Info for specific backup
 dotnet run --project src/PgDocker.Cli -- info backup_20260814_231110
 ```
+
+#### Upload Backup to SFTP
+
+```bash
+# Upload latest backup
+dotnet run --project src/PgDocker.Cli -- upload
+
+# Upload specific backup
+dotnet run --project src/PgDocker.Cli -- upload backup_20260814_231110
+
+# Upload with custom config file
+dotnet run --project src/PgDocker.Cli -- upload -c config.yml
+```
+
+Uploads backup archive, manifest, and checksums to remote SFTP server. Requires SFTP to be enabled in configuration.
+
+#### Download Backup from SFTP
+
+```bash
+# Download specific backup
+dotnet run --project src/PgDocker.Cli -- download backup_20260814_231110
+
+# Download with custom config file
+dotnet run --project src/PgDocker.Cli -- download backup_20260814_231110 -c config.yml
+```
+
+Downloads backup archive, manifest, and checksums from remote SFTP server. Requires SFTP to be enabled in configuration.
 
 #### Apply Retention Policy
 
@@ -301,12 +333,12 @@ The resulting binaries (`publish/win-x64/PgDocker.Cli.exe` and `publish/linux-x6
 
 ## Next Steps
 
-1. Implement SFTP upload/download operations
-2. Add integration tests with actual PostgreSQL container
-3. Add verbose/quiet logging modes
-4. Create release binaries for Windows/Linux
-5. Add support for scheduled backups via cron/Task Scheduler
-6. Performance optimizations for large databases
+1. Add password-based SFTP authentication (in addition to key-based)
+2. Add integration tests with SFTP server for upload/download
+3. Create release binaries for Windows/Linux/Mac
+4. Add support for scheduled backups via cron/Task Scheduler
+5. Performance optimizations for large databases
+6. Add incremental backup support
 
 ## License
 

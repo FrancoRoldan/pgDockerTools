@@ -66,12 +66,12 @@ try
             return (int)PgDocker.Core.ExitCode.Success;
 
         case "upload":
-            Console.WriteLine("Upload: Not implemented yet");
-            return (int)PgDocker.Core.ExitCode.SftpFailed;
+            await HandleUpload(args, serviceProvider.GetRequiredService<ISftpService>(), serviceProvider.GetRequiredService<IConfigurationService>(), serviceProvider.GetRequiredService<IBackupLocatorService>());
+            return (int)PgDocker.Core.ExitCode.Success;
 
         case "download":
-            Console.WriteLine("Download: Not implemented yet");
-            return (int)PgDocker.Core.ExitCode.SftpFailed;
+            await HandleDownload(args, serviceProvider.GetRequiredService<ISftpService>());
+            return (int)PgDocker.Core.ExitCode.Success;
 
         case "prune":
             await HandlePrune(args, serviceProvider.GetRequiredService<IRetentionService>());
@@ -114,16 +114,28 @@ void ShowHelp()
     Console.WriteLine("  prune              Remove old backups according to retention policy");
     Console.WriteLine("  help               Show this help message");
     Console.WriteLine();
-    Console.WriteLine("Options:");
+    Console.WriteLine("Common Options:");
     Console.WriteLine("  -c, --config       Path to configuration file (default: pgdocker.yml)");
+    Console.WriteLine("  -v, --verbose      Show detailed debug logs");
+    Console.WriteLine("  -q, --quiet        Suppress non-critical logs");
+    Console.WriteLine();
+    Console.WriteLine("Backup Options:");
     Console.WriteLine("  -u, --upload       Upload backup to SFTP after completion");
     Console.WriteLine("  -p, --prune        Apply retention policy after backup");
+    Console.WriteLine();
+    Console.WriteLine("Restore Options:");
     Console.WriteLine("  -d, --database     Specific database to restore");
     Console.WriteLine("  --clean            Drop database before restore");
     Console.WriteLine("  -y, --yes          Skip confirmation prompts");
+    Console.WriteLine();
+    Console.WriteLine("Upload Options:");
+    Console.WriteLine("  [backup-name]      Name of backup to upload (default: latest)");
+    Console.WriteLine();
+    Console.WriteLine("Download Options:");
+    Console.WriteLine("  [backup-name]      Name of backup to download (required)");
+    Console.WriteLine();
+    Console.WriteLine("Prune Options:");
     Console.WriteLine("  --dry-run          Show what would be deleted without deleting");
-    Console.WriteLine("  -v, --verbose      Show detailed debug logs");
-    Console.WriteLine("  -q, --quiet        Suppress non-critical logs");
 }
 
 async Task HandleBackup(string[] args, IBackupService backupService)
@@ -393,6 +405,84 @@ async Task HandlePrune(string[] args, IRetentionService retentionService)
         Log.Error(ex, "Prune failed");
         Console.Error.WriteLine($"✗ Prune failed: {ex.Message}");
         Environment.Exit((int)PgDocker.Core.ExitCode.RetentionFailed);
+    }
+}
+
+async Task HandleUpload(string[] args, ISftpService sftpService, IConfigurationService configService, IBackupLocatorService backupLocator)
+{
+    var configPath = "pgdocker.yml";
+    var backupName = "latest";
+
+    for (int i = 1; i < args.Length; i++)
+    {
+        switch (args[i])
+        {
+            case "-c":
+            case "--config":
+                if (i + 1 < args.Length)
+                    configPath = args[++i];
+                break;
+            default:
+                if (!args[i].StartsWith("-"))
+                    backupName = args[i];
+                break;
+        }
+    }
+
+    try
+    {
+        var config = await configService.LoadConfigurationAsync(configPath);
+        var backupPath = await backupLocator.ResolveBackupDirectoryAsync(config.Backup.Path, backupName);
+
+        await sftpService.UploadBackupAsync(backupPath, configPath);
+        Console.WriteLine($"✓ Backup uploaded to SFTP server");
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Upload failed");
+        Console.Error.WriteLine($"✗ Upload failed: {ex.Message}");
+        Environment.Exit((int)PgDocker.Core.ExitCode.SftpFailed);
+    }
+}
+
+async Task HandleDownload(string[] args, ISftpService sftpService)
+{
+    var configPath = "pgdocker.yml";
+    var backupName = "";
+
+    for (int i = 1; i < args.Length; i++)
+    {
+        switch (args[i])
+        {
+            case "-c":
+            case "--config":
+                if (i + 1 < args.Length)
+                    configPath = args[++i];
+                break;
+            default:
+                if (!args[i].StartsWith("-"))
+                    backupName = args[i];
+                break;
+        }
+    }
+
+    if (string.IsNullOrWhiteSpace(backupName))
+    {
+        Console.Error.WriteLine("✗ Backup name is required for download");
+        Console.Error.WriteLine("Usage: pgdocker download <backup-name> [-c config.yml]");
+        Environment.Exit((int)PgDocker.Core.ExitCode.GeneralError);
+    }
+
+    try
+    {
+        await sftpService.DownloadBackupAsync(backupName, configPath);
+        Console.WriteLine($"✓ Backup {backupName} downloaded from SFTP server");
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Download failed");
+        Console.Error.WriteLine($"✗ Download failed: {ex.Message}");
+        Environment.Exit((int)PgDocker.Core.ExitCode.SftpFailed);
     }
 }
 
