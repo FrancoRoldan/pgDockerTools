@@ -107,13 +107,16 @@ public class RestoreService : IRestoreService
                     );
                 }
 
-                // Create database (use admin db since target may not exist)
-                _logger.Information("Creating database {Database}", db);
-                await _dockerService.ExecuteCommandAndGetOutputAsync(
-                    containerName,
-                    "psql",
-                    new[] { "-U", username, "-d", adminDb, "-c", $"CREATE DATABASE \"{db}\"" }
-                );
+                // Create database if it doesn't exist (or was just dropped)
+                if (!dbExists || clean)
+                {
+                    _logger.Information("Creating database {Database}", db);
+                    await _dockerService.ExecuteCommandAndGetOutputAsync(
+                        containerName,
+                        "psql",
+                        new[] { "-U", username, "-d", adminDb, "-c", $"CREATE DATABASE \"{db}\"" }
+                    );
+                }
 
                 // Restore database from dump
                 var dumpFile = manifest.Databases.FirstOrDefault(d => d.Name == db)?.File;
