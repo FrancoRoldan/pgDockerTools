@@ -44,13 +44,14 @@ A cross-platform CLI tool for managing PostgreSQL backups running in Docker cont
 
 - ✅ **SFTP Upload/Download**
   - SSH key-based authentication
+  - Password-based authentication
   - Upload/download backups to/from remote SFTP servers
   - Automatic metadata sync (manifest, checksums)
 
 ### Upcoming Features
 
 - 🔄 **Scheduled backups** (via cron/Task Scheduler)
-- 🔄 **Password-based SFTP authentication**
+- 🔄 **Environment variable support for passwords** (secure storage)
 
 ## Quick Start
 
@@ -333,12 +334,13 @@ The resulting binaries (`publish/win-x64/PgDocker.Cli.exe` and `publish/linux-x6
 
 ## Next Steps
 
-1. Add password-based SFTP authentication (in addition to key-based)
+1. Add environment variable support for secure password storage
 2. Add integration tests with SFTP server for upload/download
 3. Create release binaries for Windows/Linux/Mac
 4. Add support for scheduled backups via cron/Task Scheduler
 5. Performance optimizations for large databases
 6. Add incremental backup support
+7. Support custom SSH ports and SFTP timeout configuration
 
 ## License
 

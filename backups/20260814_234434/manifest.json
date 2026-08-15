@@ -1,0 +1,16 @@
+{
+  "ToolVersion": "1.0.0",
+  "CreatedAt": "2026-08-14T23:44:34.8407801Z",
+  "Container": "postgres",
+  "PostgresVersion": "17.5",
+  "Databases": [
+    {
+      "Name": "postgres",
+      "File": "postgres.dump"
+    },
+    {
+      "Name": "TimeTracker",
+      "File": "TimeTracker.dump"
+    }
+  ]
+}

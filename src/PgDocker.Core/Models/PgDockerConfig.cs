@@ -37,4 +37,5 @@ public class SftpConfig
     public string RemotePath { get; set; } = string.Empty;
     public string Authentication { get; set; } = "key";
     public string PrivateKey { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
 }

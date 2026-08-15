@@ -148,9 +148,12 @@ public class SftpService : ISftpService
 
     private SftpClient CreateSftpClient(SftpConfig config)
     {
-        var connectionInfo = config.Authentication?.ToLower() == "key"
-            ? CreateKeyAuthenticationInfo(config)
-            : throw new InvalidOperationException("Only key-based authentication is currently supported");
+        var connectionInfo = config.Authentication?.ToLower() switch
+        {
+            "key" => CreateKeyAuthenticationInfo(config),
+            "password" => CreatePasswordAuthenticationInfo(config),
+            _ => throw new InvalidOperationException($"Unknown authentication method: {config.Authentication}. Supported: 'key', 'password'")
+        };
 
         return new SftpClient(connectionInfo);
     }
@@ -173,6 +176,23 @@ public class SftpService : ISftpService
             methods.ToArray());
     }
 
+    private ConnectionInfo CreatePasswordAuthenticationInfo(SftpConfig config)
+    {
+        if (string.IsNullOrWhiteSpace(config.Password))
+            throw new InvalidOperationException("Password is required when using password authentication");
+
+        var methods = new List<AuthenticationMethod>
+        {
+            new PasswordAuthenticationMethod(config.Username, config.Password)
+        };
+
+        return new ConnectionInfo(
+            config.Host,
+            config.Port,
+            config.Username,
+            methods.ToArray());
+    }
+
     private void ValidateSftpConfig(SftpConfig config)
     {
         if (string.IsNullOrWhiteSpace(config.Host))
@@ -184,12 +204,26 @@ public class SftpService : ISftpService
         if (string.IsNullOrWhiteSpace(config.RemotePath))
             throw new InvalidOperationException("SFTP remote path is not configured");
 
-        if (string.IsNullOrWhiteSpace(config.PrivateKey))
-            throw new InvalidOperationException("SFTP private key path is not configured");
+        var authMethod = config.Authentication?.ToLower() ?? "key";
 
-        var expandedKeyPath = ExpandPath(config.PrivateKey);
-        if (!File.Exists(expandedKeyPath))
-            throw new InvalidOperationException($"Private key file not found: {expandedKeyPath}");
+        if (authMethod == "key")
+        {
+            if (string.IsNullOrWhiteSpace(config.PrivateKey))
+                throw new InvalidOperationException("SFTP private key path is not configured");
+
+            var expandedKeyPath = ExpandPath(config.PrivateKey);
+            if (!File.Exists(expandedKeyPath))
+                throw new InvalidOperationException($"Private key file not found: {expandedKeyPath}");
+        }
+        else if (authMethod == "password")
+        {
+            if (string.IsNullOrWhiteSpace(config.Password))
+                throw new InvalidOperationException("SFTP password is not configured");
+        }
+        else
+        {
+            throw new InvalidOperationException($"Unknown authentication method: {config.Authentication}. Supported: 'key', 'password'");
+        }
     }
 
     private void EnsureRemoteDirectory(SftpClient client, string remotePath)

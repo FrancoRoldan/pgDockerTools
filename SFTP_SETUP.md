@@ -27,6 +27,8 @@ cat ~/.ssh/backup_ed25519.pub >> ~/.ssh/authorized_keys
 
 ### 3. Configure pgdocker.yml
 
+#### Option A: SSH Key Authentication (Recommended)
+
 ```yaml
 postgres:
   container: postgres
@@ -50,8 +52,23 @@ sftp:
   port: 22                               # SFTP port (default: 22)
   username: backup                       # SFTP username
   remotePath: /backups/postgres          # Remote directory for backups
-  authentication: key                    # Always "key" (password coming soon)
+  authentication: key                    # Authentication method: "key" or "password"
   privateKey: ~/.ssh/backup_ed25519     # Path to private key (~/ expands to home)
+  password: ""                           # Leave empty for key auth
+```
+
+#### Option B: Password Authentication
+
+```yaml
+sftp:
+  enabled: true
+  host: backup.example.com
+  port: 22
+  username: backup
+  remotePath: /backups/postgres
+  authentication: password               # Use password authentication
+  privateKey: ""                         # Leave empty for password auth
+  password: "your_sftp_password"        # SFTP password (consider using secure storage)
 ```
 
 ## Usage Examples
@@ -114,12 +131,43 @@ Downloads to local `./backups/` directory.
 
 ## Security Considerations
 
+### SSH Key Authentication (Recommended ⭐)
+
 1. **Private Key Permissions**: Ensure private key has correct permissions:
    ```bash
    chmod 600 ~/.ssh/backup_ed25519
    ```
 
-2. **Remote Directory**: Create dedicated user on SFTP server with limited permissions:
+2. **SSH Key Type**: Ed25519 keys are recommended (more secure, smaller):
+   ```bash
+   ssh-keygen -t ed25519 -f ~/.ssh/backup_ed25519
+   ```
+
+3. **Key Passphrase**: Optionally protect key with passphrase:
+   ```bash
+   ssh-keygen -t ed25519 -f ~/.ssh/backup_ed25519 -N "passphrase"
+   ```
+
+### Password Authentication ⚠️
+
+1. **Avoid Plain Text**: Never hardcode passwords in pgdocker.yml
+   
+2. **Alternatives for Passwords**:
+   - Use SSH keys (recommended)
+   - Store password in environment variable:
+     ```yaml
+     password: ${SFTP_PASSWORD}  # Not yet supported, set manually
+     ```
+   - Use Windows Credential Manager or similar secure storage
+
+3. **Config File Permissions**: Always protect configuration file:
+   ```bash
+   chmod 600 pgdocker.yml
+   ```
+
+### General Best Practices
+
+1. **Remote Directory**: Create dedicated user on SFTP server with limited permissions:
    ```bash
    # On SFTP server as root
    useradd -m -s /bin/false backup
@@ -128,14 +176,16 @@ Downloads to local `./backups/` directory.
    chmod 700 /backups/postgres
    ```
 
-3. **SSH Key Type**: Ed25519 keys are recommended (more secure, smaller):
+2. **Firewall**: Restrict SFTP access to specific IPs:
    ```bash
-   ssh-keygen -t ed25519 -f ~/.ssh/backup_ed25519
+   # On server: only allow from backup server IP
+   iptables -A INPUT -p tcp --dport 22 -s 192.168.1.100 -j ACCEPT
    ```
 
-4. **Config File**: Keep `pgdocker.yml` with restricted permissions:
+3. **Monitoring**: Enable SSH key logging:
    ```bash
-   chmod 600 pgdocker.yml
+   # On server: log failed attempts
+   auditctl -w /var/log/auth.log -p wa -k sshd_log_changes
    ```
 
 ## Troubleshooting
