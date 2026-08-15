@@ -57,22 +57,48 @@ A cross-platform CLI tool for managing PostgreSQL backups running in Docker cont
 
 ### Prerequisites
 
-- .NET 10.0 SDK
 - Docker
 - PostgreSQL container running
 
-### Build
+### Installation
+
+Download the published binary from releases or build it yourself:
+
+```powershell
+# Create installation directory
+mkdir "C:\Program Files\pgdocker"
+
+# Copy binary and configuration
+Copy-Item "src\PgDocker.Cli\bin\Release\net10.0\win-x64\publish\*" "C:\Program Files\pgdocker" -Recurse -Force
+
+# Add to PATH (permanent)
+[Environment]::SetEnvironmentVariable("PATH", $env:PATH + ";C:\Program Files\pgdocker", "User")
+```
+
+Then close and reopen your terminal. Now you can use `pgdocker` globally:
+
+```bash
+pgdocker backup
+pgdocker list
+```
+
+### Build from Source
+
+Prerequisites for development:
+- .NET 10.0 SDK
+- Docker
+- PostgreSQL container running
 
 ```bash
 dotnet build
 ```
 
-### Run
-
-All commands follow this pattern:
+Then run with:
 ```bash
 dotnet run --project src/PgDocker.Cli -- [command] [options]
 ```
+
+Or use the published binary:
 
 ### Available Commands
 
@@ -92,12 +118,19 @@ help               Show help message
 
 #### Create a Backup
 
+Using the installed binary:
 ```bash
-dotnet run --project src/PgDocker.Cli -- backup
+pgdocker backup
 ```
 
 With custom config and automatic upload/prune:
 ```bash
+pgdocker backup -c /path/to/config.yml -u -p
+```
+
+Or from source code:
+```bash
+dotnet run --project src/PgDocker.Cli -- backup
 dotnet run --project src/PgDocker.Cli -- backup -c config.yml -u -p
 ```
 
@@ -205,7 +238,12 @@ dotnet run --project src/PgDocker.Cli -- backup --quiet
 
 ### Configuration
 
-Create a `pgdocker.yml` file:
+Create a `pgdocker.yml` file. The CLI looks for it in this order:
+1. Current working directory (`pgdocker.yml`)
+2. Directory of the executable (useful when installed globally)
+3. Custom path with `-c` flag: `pgdocker backup -c /path/to/config.yml`
+
+Example configuration:
 
 ```yaml
 postgres:
@@ -324,23 +362,32 @@ To create self-contained single-file executables for Windows and Linux:
 
 ```bash
 # Windows x64
-dotnet publish src/PgDocker.Cli -c Release -r win-x64 -o publish/win-x64
+dotnet publish src/PgDocker.Cli -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
 
 # Linux x64
-dotnet publish src/PgDocker.Cli -c Release -r linux-x64 -o publish/linux-x64
+dotnet publish src/PgDocker.Cli -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
 ```
 
-The resulting binaries (`publish/win-x64/PgDocker.Cli.exe` and `publish/linux-x64/PgDocker.Cli`) require no .NET runtime to be installed on the target system.
+Binaries are created in:
+- Windows: `src/PgDocker.Cli/bin/Release/net10.0/win-x64/publish/pgdocker.exe`
+- Linux: `src/PgDocker.Cli/bin/Release/net10.0/linux-x64/publish/pgdocker`
+
+**Important**: Copy `pgdocker.yml` to the same directory as the executable. The CLI will automatically find it when you run commands. This allows you to:
+1. Install the executable in any directory (e.g., `/usr/local/bin`, `C:\Program Files\pgdocker`)
+2. Place `pgdocker.yml` next to it
+3. Run `pgdocker` from anywhere without needing to specify `-c`
+
+The binary requires no .NET runtime on the target system.
 
 ## Next Steps
 
 1. Add environment variable support for secure password storage
 2. Add integration tests with SFTP server for upload/download
-3. Create release binaries for Windows/Linux/Mac
-4. Add support for scheduled backups via cron/Task Scheduler
-5. Performance optimizations for large databases
-6. Add incremental backup support
-7. Support custom SSH ports and SFTP timeout configuration
+3. Add support for scheduled backups via cron/Task Scheduler
+4. Performance optimizations for large databases
+5. Add incremental backup support
+6. Support custom SSH ports and SFTP timeout configuration
+7. Create GitHub releases with pre-built binaries for Windows/Linux
 
 ## License
 

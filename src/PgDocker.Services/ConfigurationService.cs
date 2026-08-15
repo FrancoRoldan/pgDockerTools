@@ -11,10 +11,11 @@ public class ConfigurationService : IConfigurationService
     {
         try
         {
-            if (!File.Exists(configPath))
-                throw new FileNotFoundException($"Configuration file not found: {configPath}");
+            var resolvedPath = ResolveConfigurationPath(configPath);
+            if (!File.Exists(resolvedPath))
+                throw new FileNotFoundException($"Configuration file not found: {resolvedPath}");
 
-            var yaml = await File.ReadAllTextAsync(configPath);
+            var yaml = await File.ReadAllTextAsync(resolvedPath);
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(CamelCaseNamingConvention.Instance)
                 .Build();
@@ -31,6 +32,24 @@ public class ConfigurationService : IConfigurationService
         {
             throw new InvalidOperationException($"Failed to load configuration: {ex.Message}", ex);
         }
+    }
+
+    private string ResolveConfigurationPath(string configPath)
+    {
+        // If explicit path provided (absolute or contains separators), use as-is
+        if (Path.IsPathRooted(configPath))
+            return configPath;
+
+        // If default name and current directory version doesn't exist, try executable directory
+        if (configPath == "pgdocker.yml" && !File.Exists(configPath))
+        {
+            var executableDir = AppContext.BaseDirectory;
+            var executablePath = Path.Combine(executableDir, configPath);
+            if (File.Exists(executablePath))
+                return executablePath;
+        }
+
+        return configPath;
     }
 
     public void ValidateConfiguration(PgDockerConfig config)
