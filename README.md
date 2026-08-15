@@ -123,6 +123,12 @@ Using the installed binary:
 pgdocker backup
 ```
 
+Backup specific database only:
+```bash
+pgdocker backup -d TimeTracker
+pgdocker backup -d TimeTracker -u -p
+```
+
 With custom config and automatic upload/prune:
 ```bash
 pgdocker backup -c /path/to/config.yml -u -p
@@ -131,11 +137,13 @@ pgdocker backup -c /path/to/config.yml -u -p
 Or from source code:
 ```bash
 dotnet run --project src/PgDocker.Cli -- backup
+dotnet run --project src/PgDocker.Cli -- backup -d TimeTracker
 dotnet run --project src/PgDocker.Cli -- backup -c config.yml -u -p
 ```
 
 Options:
 - `-c, --config` - Path to configuration file (default: pgdocker.yml)
+- `-d, --database` - Backup specific database only (backup all by default)
 - `-u, --upload` - Upload backup to SFTP after completion
 - `-p, --prune` - Apply retention policy after backup
 

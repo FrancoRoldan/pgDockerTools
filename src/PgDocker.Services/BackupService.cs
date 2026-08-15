@@ -32,7 +32,7 @@ public class BackupService : IBackupService
         _logger = logger;
     }
 
-    public async Task<string> ExecuteBackupAsync(string configPath, bool upload = false, bool prune = false)
+    public async Task<string> ExecuteBackupAsync(string configPath, bool upload = false, bool prune = false, string? databaseName = null)
     {
         var startTime = DateTime.UtcNow;
 
@@ -82,6 +82,15 @@ public class BackupService : IBackupService
                 username,
                 config.Backup.ExcludeDatabases
             );
+
+            // Filter to specific database if provided
+            if (!string.IsNullOrEmpty(databaseName))
+            {
+                if (!databases.Contains(databaseName))
+                    throw new InvalidOperationException($"Database '{databaseName}' not found");
+                databases = new List<string> { databaseName };
+            }
+
             _logger.Information("Found {Count} databases", databases.Count);
 
             // Create backup directory

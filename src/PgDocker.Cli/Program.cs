@@ -120,6 +120,7 @@ void ShowHelp()
     Console.WriteLine("  -q, --quiet        Suppress non-critical logs");
     Console.WriteLine();
     Console.WriteLine("Backup Options:");
+    Console.WriteLine("  -d, --database     Backup specific database only");
     Console.WriteLine("  -u, --upload       Upload backup to SFTP after completion");
     Console.WriteLine("  -p, --prune        Apply retention policy after backup");
     Console.WriteLine();
@@ -143,6 +144,7 @@ async Task HandleBackup(string[] args, IBackupService backupService)
     var configPath = "pgdocker.yml";
     var upload = false;
     var prune = false;
+    var databaseName = "";
 
     for (int i = 1; i < args.Length; i++)
     {
@@ -152,6 +154,11 @@ async Task HandleBackup(string[] args, IBackupService backupService)
             case "--config":
                 if (i + 1 < args.Length)
                     configPath = args[++i];
+                break;
+            case "-d":
+            case "--database":
+                if (i + 1 < args.Length)
+                    databaseName = args[++i];
                 break;
             case "-u":
             case "--upload":
@@ -166,7 +173,7 @@ async Task HandleBackup(string[] args, IBackupService backupService)
 
     try
     {
-        var backupPath = await backupService.ExecuteBackupAsync(configPath, upload, prune);
+        var backupPath = await backupService.ExecuteBackupAsync(configPath, upload, prune, string.IsNullOrEmpty(databaseName) ? null : databaseName);
         Console.WriteLine($"✓ Backup created at: {backupPath}");
     }
     catch (Exception ex)
