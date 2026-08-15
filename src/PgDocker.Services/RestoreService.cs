@@ -128,7 +128,7 @@ public class RestoreService : IRestoreService
                             await _dockerService.ExecuteCommandWithInputAsync(
                                 containerName,
                                 "pg_restore",
-                                new[] { "-U", username, "-d", db },
+                                new[] { "-U", username, "-d", db, "-Fc" },
                                 fileStream
                             );
                         }
