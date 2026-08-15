@@ -22,6 +22,7 @@
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <AssemblyName>pgdocker</AssemblyName>
   </PropertyGroup>
 
 </Project>
