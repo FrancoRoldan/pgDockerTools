@@ -184,10 +184,13 @@ public class DockerService : IDockerService
 
     private string QuoteArgument(string arg)
     {
-        if (arg.Contains("\""))
-            return "'" + arg + "'";
-        if (arg.Contains(" "))
-            return "\"" + arg + "\"";
+        // Escape backslashes first, then escape double quotes
+        var escaped = arg.Replace("\\", "\\\\").Replace("\"", "\\\"");
+
+        // Always quote if it contains special characters or spaces
+        if (arg.Any(c => c == ' ' || c == '"' || c == '\\'))
+            return "\"" + escaped + "\"";
+
         return arg;
     }
 }
