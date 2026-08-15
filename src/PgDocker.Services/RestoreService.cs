@@ -99,6 +99,9 @@ public class RestoreService : IRestoreService
 
                 if (dbExists && clean)
                 {
+                    _logger.Information("Terminating all connections to database {Database}", db);
+                    await TerminateAllConnectionsAsync(containerName, username, adminDb, db);
+
                     _logger.Information("Dropping existing database {Database}", db);
                     await _dockerService.ExecuteCommandAndGetOutputAsync(
                         containerName,
@@ -164,6 +167,23 @@ public class RestoreService : IRestoreService
         catch
         {
             return false;
+        }
+    }
+
+    private async Task TerminateAllConnectionsAsync(string containerName, string username, string adminDb, string targetDatabase)
+    {
+        try
+        {
+            var sql = $"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{targetDatabase}' AND pid <> pg_backend_pid()";
+            await _dockerService.ExecuteCommandAndGetOutputAsync(
+                containerName,
+                "psql",
+                new[] { "-U", username, "-d", adminDb, "-c", sql }
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.Warning(ex, "Failed to terminate connections to database {Database}, will attempt drop anyway", targetDatabase);
         }
     }
 }
