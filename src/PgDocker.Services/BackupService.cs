@@ -12,6 +12,8 @@ public class BackupService : IBackupService
     private readonly IHashService _hashService;
     private readonly IManifestService _manifestService;
     private readonly ICompressionService _compressionService;
+    private readonly ISftpService _sftpService;
+    private readonly IRetentionService _retentionService;
     private readonly ILogger _logger;
 
     public BackupService(
@@ -21,6 +23,8 @@ public class BackupService : IBackupService
         IHashService hashService,
         IManifestService manifestService,
         ICompressionService compressionService,
+        ISftpService sftpService,
+        IRetentionService retentionService,
         ILogger logger)
     {
         _dockerService = dockerService;
@@ -29,6 +33,8 @@ public class BackupService : IBackupService
         _hashService = hashService;
         _manifestService = manifestService;
         _compressionService = compressionService;
+        _sftpService = sftpService;
+        _retentionService = retentionService;
         _logger = logger;
     }
 
@@ -178,6 +184,20 @@ public class BackupService : IBackupService
 
             var duration = DateTime.UtcNow - startTime;
             _logger.Information("Backup completed successfully in {Duration}ms", duration.TotalMilliseconds);
+
+            if (upload)
+            {
+                _logger.Information("Uploading backup to SFTP server");
+                await _sftpService.UploadBackupAsync(backupDir, configPath);
+                _logger.Information("Backup uploaded successfully");
+            }
+
+            if (prune)
+            {
+                _logger.Information("Applying retention policy");
+                await _retentionService.PruneBackupsAsync(configPath, false);
+                _logger.Information("Retention policy applied");
+            }
 
             return backupDir;
         }

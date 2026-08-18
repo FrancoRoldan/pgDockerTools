@@ -1,6 +1,6 @@
 postgres:
   container: postgres
-  username: postgres
+  username: franco
 
 backup:
   path: ./backups

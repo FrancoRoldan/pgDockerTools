@@ -34,15 +34,17 @@ public class SftpService : ISftpService
         _logger.Information("Starting SFTP upload for {BackupPath}", backupPath);
 
         var backupName = new DirectoryInfo(backupPath).Name;
-        var isCompressed = Directory.GetFiles(backupPath).Any(f =>
-            f.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) ||
-            f.EndsWith(".tar.gz", StringComparison.OrdinalIgnoreCase));
+        var parentDir = Path.GetDirectoryName(backupPath);
+        var compressedFileWithZip = Path.Combine(parentDir ?? "", backupName + ".zip");
+        var compressedFileWithTarGz = Path.Combine(parentDir ?? "", backupName + ".tar.gz");
 
-        var fileToUpload = isCompressed
-            ? Directory.GetFiles(backupPath).First(f =>
-                f.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) ||
-                f.EndsWith(".tar.gz", StringComparison.OrdinalIgnoreCase))
-            : backupPath;
+        string? compressedFile = null;
+        if (File.Exists(compressedFileWithZip))
+            compressedFile = compressedFileWithZip;
+        else if (File.Exists(compressedFileWithTarGz))
+            compressedFile = compressedFileWithTarGz;
+
+        var isCompressed = compressedFile != null;
 
         using (var client = CreateSftpClient(config.Sftp))
         {
@@ -51,13 +53,35 @@ public class SftpService : ISftpService
 
             EnsureRemoteDirectory(client, config.Sftp.RemotePath);
 
-            var remotePath = Path.Combine(config.Sftp.RemotePath, Path.GetFileName(fileToUpload))
-                .Replace("\\", "/");
-
-            using (var fileStream = new FileStream(fileToUpload, FileMode.Open, FileAccess.Read))
+            if (isCompressed && compressedFile != null)
             {
-                client.UploadFile(fileStream, remotePath);
-                _logger.Information("Uploaded {FileName} to {RemotePath}", Path.GetFileName(fileToUpload), remotePath);
+                var remotePath = Path.Combine(config.Sftp.RemotePath, Path.GetFileName(compressedFile))
+                    .Replace("\\", "/");
+
+                using (var fileStream = new FileStream(compressedFile, FileMode.Open, FileAccess.Read))
+                {
+                    client.UploadFile(fileStream, remotePath);
+                    _logger.Information("Uploaded {FileName} to {RemotePath}", Path.GetFileName(compressedFile), remotePath);
+                }
+            }
+            else
+            {
+                var remoteBackupDir = Path.Combine(config.Sftp.RemotePath, backupName).Replace("\\", "/");
+                EnsureRemoteDirectory(client, remoteBackupDir);
+
+                var filesToUpload = Directory.GetFiles(backupPath).Where(f =>
+                    f.EndsWith(".sql", StringComparison.OrdinalIgnoreCase) ||
+                    f.EndsWith(".dump", StringComparison.OrdinalIgnoreCase)).ToList();
+
+                foreach (var file in filesToUpload)
+                {
+                    var remotePath = Path.Combine(remoteBackupDir, Path.GetFileName(file)).Replace("\\", "/");
+                    using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read))
+                    {
+                        client.UploadFile(fileStream, remotePath);
+                        _logger.Information("Uploaded {FileName} to {RemotePath}", Path.GetFileName(file), remotePath);
+                    }
+                }
             }
 
             var manifestFile = Path.Combine(backupPath, "manifest.json");
@@ -260,6 +284,7 @@ public class SftpService : ISftpService
 
     private string ExpandPath(string path)
     {
-        return path.Replace("~", Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+        var expanded = path.Replace("~", Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+        return Path.GetFullPath(expanded);
     }
 }
