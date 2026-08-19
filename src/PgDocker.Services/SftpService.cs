@@ -55,13 +55,25 @@ public class SftpService : ISftpService
 
             if (isCompressed && compressedFile != null)
             {
-                var remotePath = Path.Combine(config.Sftp.RemotePath, Path.GetFileName(compressedFile))
+                var fileName = Path.GetFileName(compressedFile);
+                var fileSize = new FileInfo(compressedFile).Length;
+                var remotePath = Path.Combine(config.Sftp.RemotePath, fileName)
                     .Replace("\\", "/");
 
+                _logger.Debug("Uploading {FileName} ({SizeKB}KB) to {RemotePath}", fileName, fileSize / 1024, remotePath);
                 using (var fileStream = new FileStream(compressedFile, FileMode.Open, FileAccess.Read))
                 {
-                    client.UploadFile(fileStream, remotePath);
-                    _logger.Information("Uploaded {FileName} to {RemotePath}", Path.GetFileName(compressedFile), remotePath);
+                    try
+                    {
+                        client.UploadFile(fileStream, remotePath);
+                        _logger.Information("Successfully uploaded {FileName} ({SizeKB}KB) to {RemotePath}",
+                            fileName, fileSize / 1024, remotePath);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Error(ex, "Failed to upload {FileName} to {RemotePath}", fileName, remotePath);
+                        throw;
+                    }
                 }
             }
             else
@@ -75,11 +87,24 @@ public class SftpService : ISftpService
 
                 foreach (var file in filesToUpload)
                 {
-                    var remotePath = Path.Combine(remoteBackupDir, Path.GetFileName(file)).Replace("\\", "/");
+                    var fileName = Path.GetFileName(file);
+                    var fileSize = new FileInfo(file).Length;
+                    var remotePath = Path.Combine(remoteBackupDir, fileName).Replace("\\", "/");
+
+                    _logger.Debug("Uploading {FileName} ({SizeKB}KB) to {RemotePath}", fileName, fileSize / 1024, remotePath);
                     using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read))
                     {
-                        client.UploadFile(fileStream, remotePath);
-                        _logger.Information("Uploaded {FileName} to {RemotePath}", Path.GetFileName(file), remotePath);
+                        try
+                        {
+                            client.UploadFile(fileStream, remotePath);
+                            _logger.Information("Successfully uploaded {FileName} ({SizeKB}KB) to {RemotePath}",
+                                fileName, fileSize / 1024, remotePath);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.Error(ex, "Failed to upload {FileName} to {RemotePath}", fileName, remotePath);
+                            throw;
+                        }
                     }
                 }
             }
@@ -94,8 +119,16 @@ public class SftpService : ISftpService
 
                 using (var fileStream = new FileStream(manifestFile, FileMode.Open, FileAccess.Read))
                 {
-                    client.UploadFile(fileStream, remoteManifest);
-                    _logger.Information("Uploaded manifest to {RemotePath}", remoteManifest);
+                    try
+                    {
+                        client.UploadFile(fileStream, remoteManifest);
+                        _logger.Information("Successfully uploaded manifest to {RemotePath}", remoteManifest);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Error(ex, "Failed to upload manifest to {RemotePath}", remoteManifest);
+                        throw;
+                    }
                 }
             }
 
@@ -109,12 +142,28 @@ public class SftpService : ISftpService
 
                 using (var fileStream = new FileStream(sha256File, FileMode.Open, FileAccess.Read))
                 {
-                    client.UploadFile(fileStream, remoteSha);
-                    _logger.Information("Uploaded checksum to {RemotePath}", remoteSha);
+                    try
+                    {
+                        client.UploadFile(fileStream, remoteSha);
+                        _logger.Information("Successfully uploaded checksum to {RemotePath}", remoteSha);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Error(ex, "Failed to upload checksum to {RemotePath}", remoteSha);
+                        throw;
+                    }
                 }
             }
 
-            client.Disconnect();
+            try
+            {
+                client.Disconnect();
+                _logger.Debug("SFTP connection closed gracefully");
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning(ex, "Error closing SFTP connection");
+            }
         }
 
         _logger.Information("SFTP upload completed successfully");
