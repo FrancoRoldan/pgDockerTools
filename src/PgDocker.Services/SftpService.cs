@@ -56,12 +56,64 @@ public class SftpService : ISftpService
             if (isCompressed && compressedFile != null)
             {
                 var fileName = Path.GetFileName(compressedFile);
-                var fileSize = new FileInfo(compressedFile).Length;
+                var fileInfo = new FileInfo(compressedFile);
+                var fileSize = fileInfo.Length;
                 var remotePath = Path.Combine(config.Sftp.RemotePath, fileName)
                     .Replace("\\", "/");
 
-                _logger.Debug("Uploading {FileName} ({SizeKB}KB) to {RemotePath}", fileName, fileSize / 1024, remotePath);
+                _logger.Information("Uploading compressed backup: {LocalPath} ({SizeKB}KB) exists: {Exists}",
+                    fileInfo.FullName, fileSize / 1024, fileInfo.Exists);
+                _logger.Debug("Remote destination: {RemotePath}", remotePath);
+
                 using (var fileStream = new FileStream(compressedFile, FileMode.Open, FileAccess.Read))
+                {
+                    try
+                    {
+                        client.UploadFile(fileStream, remotePath);
+                        _logger.Information("Successfully uploaded {FileName} ({SizeKB}KB) to {RemotePath}",
+                            fileName, fileSize / 1024, remotePath);
+
+                        try
+                        {
+                            if (client.Exists(remotePath))
+                            {
+                                var attributes = client.GetAttributes(remotePath);
+                                _logger.Information("Verified remote file exists: {RemotePath} (size: {RemoteSizeKB}KB)",
+                                    remotePath, attributes.Size / 1024);
+                            }
+                            else
+                            {
+                                _logger.Warning("Remote file verification failed: {RemotePath} does not exist on server", remotePath);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.Warning(ex, "Could not verify remote file: {RemotePath}", remotePath);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Error(ex, "Failed to upload {FileName} to {RemotePath}", fileName, remotePath);
+                        throw;
+                    }
+                }
+            }
+
+            var remoteBackupDir = Path.Combine(config.Sftp.RemotePath, backupName).Replace("\\", "/");
+            EnsureRemoteDirectory(client, remoteBackupDir);
+
+            var sqlFilesToUpload = Directory.GetFiles(backupPath).Where(f =>
+                f.EndsWith(".sql", StringComparison.OrdinalIgnoreCase) ||
+                f.EndsWith(".dump", StringComparison.OrdinalIgnoreCase)).ToList();
+
+            foreach (var file in sqlFilesToUpload)
+            {
+                var fileName = Path.GetFileName(file);
+                var fileSize = new FileInfo(file).Length;
+                var remotePath = Path.Combine(remoteBackupDir, fileName).Replace("\\", "/");
+
+                _logger.Debug("Uploading {FileName} ({SizeKB}KB) to {RemotePath}", fileName, fileSize / 1024, remotePath);
+                using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read))
                 {
                     try
                     {
@@ -73,38 +125,6 @@ public class SftpService : ISftpService
                     {
                         _logger.Error(ex, "Failed to upload {FileName} to {RemotePath}", fileName, remotePath);
                         throw;
-                    }
-                }
-            }
-            else
-            {
-                var remoteBackupDir = Path.Combine(config.Sftp.RemotePath, backupName).Replace("\\", "/");
-                EnsureRemoteDirectory(client, remoteBackupDir);
-
-                var filesToUpload = Directory.GetFiles(backupPath).Where(f =>
-                    f.EndsWith(".sql", StringComparison.OrdinalIgnoreCase) ||
-                    f.EndsWith(".dump", StringComparison.OrdinalIgnoreCase)).ToList();
-
-                foreach (var file in filesToUpload)
-                {
-                    var fileName = Path.GetFileName(file);
-                    var fileSize = new FileInfo(file).Length;
-                    var remotePath = Path.Combine(remoteBackupDir, fileName).Replace("\\", "/");
-
-                    _logger.Debug("Uploading {FileName} ({SizeKB}KB) to {RemotePath}", fileName, fileSize / 1024, remotePath);
-                    using (var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read))
-                    {
-                        try
-                        {
-                            client.UploadFile(fileStream, remotePath);
-                            _logger.Information("Successfully uploaded {FileName} ({SizeKB}KB) to {RemotePath}",
-                                fileName, fileSize / 1024, remotePath);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.Error(ex, "Failed to upload {FileName} to {RemotePath}", fileName, remotePath);
-                            throw;
-                        }
                     }
                 }
             }
